@@ -3,12 +3,47 @@ import type {
   LogObject,
   Logger,
   RequestLoggerOptions,
+  StorageAdapter,
 } from "./types";
 import type { Elysia } from "elysia";
 import { getIP, getFormattingMethodName } from "./helpers";
 import { Log } from "./log";
 import process from "process";
-import { ConsoleStorageAdapter } from "./consoleAdapter"; // Import the new adapter
+import { ConsoleStorageAdapter } from "./consoleAdapter";
+
+// Utility function to redact sensitive fields in an object
+const redactFields = (obj: any, fieldsToRedact: string[]): any => {
+  if (!obj || typeof obj !== "object") return obj;
+  const redacted = { ...obj };
+  for (const field of fieldsToRedact) {
+    if (field in redacted) {
+      redacted[field] = "[REDACTED]";
+    }
+    for (const key in redacted) {
+      if (typeof redacted[key] === "object") {
+        redacted[key] = redactFields(redacted[key], fieldsToRedact);
+      }
+    }
+  }
+  return redacted;
+};
+
+// Utility function to redact sensitive headers
+const redactHeadersFn = (
+  headers: Record<string, string>,
+  headersToRedact: string[]
+): Record<string, string> => {
+  const redacted = { ...headers };
+  for (const header of headersToRedact) {
+    const headerLower = header.toLowerCase();
+    for (const key in redacted) {
+      if (key.toLowerCase() === headerLower) {
+        redacted[key] = "[REDACTED]";
+      }
+    }
+  }
+  return redacted;
+};
 
 /**
  * List of IP headers to check in order of priority.
@@ -43,37 +78,50 @@ export const headersToCheck: IPHeaders[] = [
  * @param options.includeHeaders - An array of headers to include in the log.
  * @param options.ipHeaders - An array of headers to check for the client IP address.
  * @param options.storageAdapter - The storage adapter to persist logs. Defaults to ConsoleStorageAdapter.
+ * @param options.redactRequestBodyFields - Fields to redact in request body (e.g., ["password", "token"]).
+ * @param options.redactResponseBodyFields - Fields to redact in response body.
+ * @param options.redactHeaders - Headers to redact (e.g., ["Authorization", "Referer"]).
  *
  * @returns A middleware function that logs incoming requests and outgoing responses.
  */
-export const ElysiaLogging =
-  (logger: Logger = console, options: RequestLoggerOptions = {}) =>
-  (app: Elysia): Elysia => {
-    // Options
-    const {
-      level = "info",
-      format = "json",
-      skip = undefined,
-      includeHeaders = ["x-forwarded-for", "authorization"],
-      ipHeaders = headersToCheck,
-      storageAdapter = new ConsoleStorageAdapter(), // Default to ConsoleStorageAdapter
-    } = options;
+export const ElysiaLogging = (
+  logger: Logger = console,
+  options: RequestLoggerOptions & { storageAdapter?: StorageAdapter } = {}
+) => {
+  // Options
+  const {
+    level = "info",
+    format = "json",
+    skip = undefined,
+    includeHeaders = [
+      "x-forwarded-for",
+      "authorization",
+      "user-agent",
+      "referer",
+    ], // Added 'referer'
+    ipHeaders = headersToCheck,
+    storageAdapter = new ConsoleStorageAdapter(),
+    redactRequestBodyFields = ["password", "token", "apiKey", "secret"],
+    redactResponseBodyFields = ["token", "apiKey", "secret"],
+    redactHeaders = ["authorization", "x-api-key", "referer"], // Added 'referer' to redact by default
+  } = options;
 
-    // If the formatting method does not exist, throw an error
-    if (
-      typeof format === "string" &&
-      getFormattingMethodName(format) in Log.prototype === false
-    ) {
-      throw new Error(`Formatter '${format}' not found!`);
-    }
+  // If the formatting method does not exist, throw an error
+  if (
+    typeof format === "string" &&
+    getFormattingMethodName(format) in Log.prototype === false
+  ) {
+    throw new Error(`Formatter '${format}' not found!`);
+  }
 
-    // Initialize storage adapter
-    storageAdapter.init().catch((err) => {
-      console.error("Failed to initialize storage adapter:", err);
-      process.exit(1);
-    });
-    // @ts-ignore
-    return app
+  // Initialize storage adapter
+  storageAdapter.init().catch((err) => {
+    console.error("Failed to initialize storage adapter:", err);
+    process.exit(1);
+  });
+
+  return (app: Elysia) => {
+    app
       .derive((ctx) => {
         const clientIP = app.server
           ? getIP(ctx.request.headers, ipHeaders) ??
@@ -89,7 +137,12 @@ export const ElysiaLogging =
         ctx.store = { requestStart: process.hrtime.bigint(), ...ctx.store };
       })
       .onAfterHandle((ctx) => {
-        ctx.store = { responseSize: undefined, ...ctx.store }; // TODO: Still not exposed by Elysia (issue #324)
+        ctx.store = {
+          responseSize: undefined,
+          responseBody: ctx.response,
+          responseHeaders: ctx.set.headers,
+          ...ctx.store,
+        };
       })
       .onAfterResponse(async (ctx) => {
         // Skip logging if skip function returns true
@@ -97,9 +150,8 @@ export const ElysiaLogging =
           return;
         }
 
-        // Calculate duration if it's set on the context
+        // Calculate duration
         let duration: number = 0;
-
         if (
           (ctx.store as { requestStart?: bigint }).requestStart !== undefined &&
           typeof (ctx.store as { requestStart?: bigint }).requestStart ===
@@ -112,6 +164,56 @@ export const ElysiaLogging =
             ) / 1e6; // Convert to milliseconds
         }
 
+        // Capture request headers
+        const requestHeaders: Record<string, string> = {};
+        for (const header of includeHeaders) {
+          if (ctx.request.headers.has(header)) {
+            requestHeaders[header] = ctx.request.headers.get(header)!;
+          }
+        }
+
+        // Redact sensitive headers
+        const redactedRequestHeaders = redactHeadersFn(
+          requestHeaders,
+          redactHeaders
+        );
+
+        // Capture request body
+        let requestBody: any = ctx.body;
+        try {
+          if (typeof requestBody === "string") {
+            requestBody = JSON.parse(requestBody);
+          }
+        } catch (e) {
+          // If body isn't JSON, keep it as is
+        }
+        const redactedRequestBody = redactFields(
+          requestBody,
+          redactRequestBodyFields
+        );
+
+        // Capture response body and headers
+        let responseBody = (ctx.store as { responseBody?: any }).responseBody;
+        try {
+          if (typeof responseBody === "string") {
+            responseBody = JSON.parse(responseBody);
+          }
+        } catch (e) {
+          // If response isn't JSON, keep it as is
+        }
+        const redactedResponseBody = redactFields(
+          responseBody,
+          redactResponseBodyFields
+        );
+
+        const responseHeaders =
+          (ctx.store as { responseHeaders?: Record<string, string> })
+            .responseHeaders || {};
+        const redactedResponseHeaders = redactHeadersFn(
+          responseHeaders,
+          redactHeaders
+        );
+
         // Construct log object
         const logObject: LogObject = new Log({
           request: {
@@ -122,11 +224,18 @@ export const ElysiaLogging =
               params: Object.fromEntries(
                 new URLSearchParams(new URL(ctx.request.url).search)
               ),
+              queryString: new URL(ctx.request.url).search,
             },
+            headers: redactedRequestHeaders,
+            body: redactedRequestBody,
+            referer: redactedRequestHeaders["referer"] || undefined, // Capture Referer
           },
           response: {
             status_code: ctx.set.status,
             time: duration,
+            headers: redactedResponseHeaders,
+            body: redactedResponseBody,
+            referer: redactedResponseHeaders["referer"] || undefined, // Capture Referer from response (if set)
           },
         }).log;
 
@@ -138,23 +247,13 @@ export const ElysiaLogging =
           ).error;
         }
 
-        // Add request ID if it exists, or generate one
+        // Add request ID
         logObject.request.requestID =
           ctx.request.headers.get("x-request-id") ||
           `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // Include headers
-        logObject.request.headers = {};
-        for (const header of includeHeaders) {
-          if (ctx.request.headers.has(header)) {
-            logObject.request.headers[header] =
-              ctx.request.headers.get(header)!;
-          }
-        }
-
         let logOutput: string | LogObject;
 
-        // If the log format is a function, call it and log the output
         if (typeof format === "function") {
           logOutput = format(logObject);
         } else if (typeof format === "string") {
@@ -171,6 +270,9 @@ export const ElysiaLogging =
         logger[level as keyof typeof logger](logOutput);
         await storageAdapter.saveLog(logObject);
       });
+
+    return app;
   };
+};
 
 export default ElysiaLogging;

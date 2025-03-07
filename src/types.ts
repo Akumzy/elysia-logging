@@ -1,6 +1,7 @@
 import type { Context } from "elysia";
 import { Log } from "./log";
 
+export { ConsoleStorageAdapter } from "./consoleAdapter";
 // This creates a type that is like "json" | "common" | "short"
 type LogFormatString = {
   [K in keyof typeof Log.prototype as K extends `format${infer Rest}`
@@ -55,62 +56,32 @@ export type IPHeaders =
   | "cf-pseudo-ipv4";
 
 /**
- * Represents a log object that contains information about a request and its response.
+ * Represents a log object that contains detailed information about a request and its response.
  */
 export type LogObject = {
   request: {
-    /**
-     * The IP address of the client that made the request.
-     */
     ip?: string;
-    /**
-     * The unique ID of the request.
-     */
     requestID?: string;
-    /**
-     * The HTTP method used in the request.
-     */
     method: string;
-    /**
-     * The headers included in the request.
-     */
     headers?: Record<string, string>;
-    /**
-     * The URL of the request.
-     */
     url: {
-      /**
-       * The path of the URL.
-       */
       path: string;
-      /**
-       * The params string of the URL.
-       */
-      params: Record<string, string>; // | Record<string, never>;
+      params: Record<string, string>;
+      queryString?: string;
     };
+    body?: any; // Request body (could be JSON, form data, etc.)
+    referer?: string; // Added to capture the Referer header
   };
   response: {
-    /**
-     * The status code of the response.
-     */
     status_code: number | string | undefined;
-    /**
-     * The time it took to process the request and generate the response, in nanoseconds.
-     */
-    time: number;
-    /**
-     * The message associated with the response.
-     */
+    time: number; // Duration in milliseconds
+    headers?: Record<string, string>;
+    body?: any; // Response body
     message?: string;
+    referer?: string; // Added to capture any forwarded Referer in response
   };
-  /**
-   * An optional error message associated with the request.
-   */
   error?: string | object | Error;
-  /**
-   * The timestamp when the log was created.
-   */
-  timestamp?: string;
+  timestamp?: string; // Added for dashboard compatibility
 };
 
 /**
@@ -118,11 +89,14 @@ export type LogObject = {
  */
 export interface RequestLoggerOptions {
   level?: string;
-  format?: LogFormatType; // string | ((log: LogObject) => string | LogObject);
+  format?: LogFormatType;
   includeHeaders?: string[];
   skip?: (ctx: Context) => boolean;
   ipHeaders?: IPHeaders[];
-  storageAdapter?: StorageAdapter;
+  // Redaction options
+  redactRequestBodyFields?: string[]; // Fields to redact in request body
+  redactResponseBodyFields?: string[]; // Fields to redact in response body
+  redactHeaders?: string[]; // Headers to redact
 }
 
 /**
@@ -137,18 +111,8 @@ export interface Logger {
 
 /**
  * Interface for a log formatter.
- *
- * A log formatter is a class with a format() method that takes a log
- * object and returns a string or a log object.
  */
 export interface LogFormatter {
-  /**
-   * Formats a log object.
-   *
-   * @param log Log object to format
-   *
-   * @returns Formatted log object or string
-   */
   format(log: LogObject): string | LogObject;
 }
 
