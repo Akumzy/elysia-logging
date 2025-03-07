@@ -1,7 +1,6 @@
 import type { Context } from "elysia";
 import { Log } from "./log";
 
-export { ConsoleStorageAdapter } from "./consoleAdapter";
 // This creates a type that is like "json" | "common" | "short"
 type LogFormatString = {
   [K in keyof typeof Log.prototype as K extends `format${infer Rest}`
@@ -114,12 +113,4 @@ export interface Logger {
  */
 export interface LogFormatter {
   format(log: LogObject): string | LogObject;
-}
-
-/**
- * Interface for the storage adapter to handle log persistence.
- */
-export interface StorageAdapter {
-  init(): Promise<void>;
-  saveLog(log: LogObject): Promise<void>;
 }

@@ -23,13 +23,6 @@
     },
     "./types": {
       "types": "./dist/types.d.ts"
-    },
-    "./consoleAdapter": {
-      "require": "./dist/consoleAdapter.js",
-      "import": "./dist/consoleAdapter.js",
-      "node": "./dist/consoleAdapter.js",
-      "default": "./dist/consoleAdapter.js",
-      "types": "./dist/consoleAdapter.d.ts"
     }
   },
   "scripts": {
@@ -86,5 +79,5 @@
     "logging",
     "logger"
   ],
-  "version": "0.0.5"
+  "version": "0.0.6"
 }

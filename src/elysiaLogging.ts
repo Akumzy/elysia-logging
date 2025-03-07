@@ -3,13 +3,11 @@ import type {
   LogObject,
   Logger,
   RequestLoggerOptions,
-  StorageAdapter,
 } from "./types";
 import type { Elysia } from "elysia";
 import { getIP, getFormattingMethodName } from "./helpers";
 import { Log } from "./log";
 import process from "process";
-import { ConsoleStorageAdapter } from "./consoleAdapter";
 
 // Utility function to redact sensitive fields in an object
 const redactFields = (obj: any, fieldsToRedact: string[]): any => {
@@ -86,7 +84,7 @@ export const headersToCheck: IPHeaders[] = [
  */
 export const ElysiaLogging = (
   logger: Logger = console,
-  options: RequestLoggerOptions & { storageAdapter?: StorageAdapter } = {}
+  options: RequestLoggerOptions = {}
 ) => {
   // Options
   const {
@@ -100,7 +98,6 @@ export const ElysiaLogging = (
       "referer",
     ], // Added 'referer'
     ipHeaders = headersToCheck,
-    storageAdapter = new ConsoleStorageAdapter(),
     redactRequestBodyFields = ["password", "token", "apiKey", "secret"],
     redactResponseBodyFields = ["token", "apiKey", "secret"],
     redactHeaders = ["authorization", "x-api-key", "referer"], // Added 'referer' to redact by default
@@ -113,12 +110,6 @@ export const ElysiaLogging = (
   ) {
     throw new Error(`Formatter '${format}' not found!`);
   }
-
-  // Initialize storage adapter
-  storageAdapter.init().catch((err) => {
-    console.error("Failed to initialize storage adapter:", err);
-    process.exit(1);
-  });
 
   return (app: Elysia) => {
     app
@@ -266,9 +257,7 @@ export const ElysiaLogging = (
           throw new Error(`Invalid formatting method type '${typeof format}'!`);
         }
 
-        // Log to console and save to storage
         logger[level as keyof typeof logger](logOutput);
-        await storageAdapter.saveLog(logObject);
       });
 
     return app;
