@@ -3,7 +3,6 @@ import type {
   LogObject,
   Logger,
   RequestLoggerOptions,
-  StorageAdapter,
 } from "./types";
 import type { Elysia } from "elysia";
 import { getIP, getFormattingMethodName } from "./helpers";
@@ -73,7 +72,7 @@ export const ElysiaLogging =
       console.error("Failed to initialize storage adapter:", err);
       process.exit(1);
     });
-
+    // @ts-ignore
     return app
       .derive((ctx) => {
         const clientIP = app.server

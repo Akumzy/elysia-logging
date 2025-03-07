@@ -98,11 +98,19 @@ export type LogObject = {
      * The time it took to process the request and generate the response, in nanoseconds.
      */
     time: number;
+    /**
+     * The message associated with the response.
+     */
+    message?: string;
   };
   /**
    * An optional error message associated with the request.
    */
   error?: string | object | Error;
+  /**
+   * The timestamp when the log was created.
+   */
+  timestamp?: string;
 };
 
 /**
