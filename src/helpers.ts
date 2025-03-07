@@ -14,15 +14,20 @@ const SECOND = 1e3 * MILLISECOND;
  *
  * @returns An object containing the username and password, or undefined if the header is invalid.
  */
-export function parseBasicAuthHeader(header : string ) : BasicAuth | undefined {
-  const [type, authString] : string[] = header.split(" ");
+export function parseBasicAuthHeader(header: string): BasicAuth | undefined {
+  const [type, authString]: string[] = header.split(" ");
 
   // Check if authType is Basic and authString is valid base64
-  if(type !== "Basic") return undefined;
-  if(!isValidBase64(authString as string)) return undefined;
+  if (type !== "Basic") return undefined;
+  if (!isValidBase64(authString as string)) return undefined;
 
-  const authStringDecoded = Buffer.from(authString as string, 'base64').toString();
-  const [username, password] = authStringDecoded.includes(":") ? authStringDecoded.split(":", 2) : [undefined, undefined];
+  const authStringDecoded = Buffer.from(
+    authString as string,
+    "base64"
+  ).toString();
+  const [username, password] = authStringDecoded.includes(":")
+    ? authStringDecoded.split(":", 2)
+    : [undefined, undefined];
 
   return {
     type: type,
@@ -58,18 +63,21 @@ export function formatDuration(durationInNanoseconds: number): string {
  *
  * @returns The IP address of the client, or undefined if not found.
  */
-export function getIP(headers: Headers, ipHeaders: IPHeaders[] = headersToCheck): string | undefined | null {
+export function getIP(
+  headers: Headers,
+  ipHeaders: IPHeaders[] = headersToCheck
+): string | undefined | null {
   let clientIP: string | undefined | null = null;
   for (const header of ipHeaders) {
-      clientIP = headers.get(header)
-      if (clientIP !== null && typeof clientIP == 'string') {
-        if (clientIP.includes(',')) {
-          clientIP = clientIP.split(',')[0]
-        }
-        break
+    clientIP = headers.get(header);
+    if (clientIP !== null && typeof clientIP === "string") {
+      if (clientIP.includes(",")) {
+        clientIP = clientIP.split(",")[0];
       }
+      break;
+    }
   }
-  return clientIP
+  return clientIP;
 }
 
 /**
@@ -79,10 +87,8 @@ export function getIP(headers: Headers, ipHeaders: IPHeaders[] = headersToCheck)
  *
  * @returns The name of the formatting method.
  */
-export function getFormattingMethodName(format : string): string {
-  return `format${
-    format.charAt(0).toUpperCase() + format.slice(1)
-  }`
+export function getFormattingMethodName(format: string): string {
+  return `format${format.charAt(0).toUpperCase() + format.slice(1)}`;
 }
 
 /**
@@ -93,5 +99,5 @@ export function getFormattingMethodName(format : string): string {
  * @returns A boolean indicating whether the string is a valid base64 encoded string.
  */
 function isValidBase64(str: string): boolean {
-  return Buffer.from(str, 'base64').toString('base64') === str;
+  return Buffer.from(str, "base64").toString("base64") === str;
 }

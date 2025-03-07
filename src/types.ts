@@ -2,7 +2,11 @@ import type { Context } from "elysia";
 import { Log } from "./log";
 
 // This creates a type that is like "json" | "common" | "short"
-type LogFormatString = {[K in keyof typeof Log.prototype as K extends `format${infer Rest}` ? Lowercase<Rest> : never]: typeof Log.prototype[K]};
+type LogFormatString = {
+  [K in keyof typeof Log.prototype as K extends `format${infer Rest}`
+    ? Lowercase<Rest>
+    : never]: (typeof Log.prototype)[K];
+};
 
 // This is the type of a function that takes a LogObject and returns a string or a LogObject
 type LogFormatMethod = (log: LogObject) => string | LogObject;
@@ -12,13 +16,17 @@ type LogFormatRecord = Record<Uppercase<keyof LogFormatString>, string>;
 
 //
 export const LogFormat = {
-  JSON: 'json',
-  COMMON: 'common',
-  SHORT: 'short',
+  JSON: "json",
+  COMMON: "common",
+  SHORT: "short",
   // Add other methods here
 } as const;
 
-export type LogFormatType = keyof LogFormatString | LogFormatMethod | LogFormatter | LogFormatRecord;
+export type LogFormatType =
+  | keyof LogFormatString
+  | LogFormatMethod
+  | LogFormatter
+  | LogFormatRecord;
 
 /**
  * Represents the basic authentication credentials.
@@ -27,12 +35,24 @@ export type BasicAuth = {
   type: string;
   username: string;
   password: string;
-}
+};
 
 /**
  * Represents the list of IP headers that can be used to retrieve the client's IP address.
  */
-export type IPHeaders = 'x-forwarded-for' | 'x-real-ip' | 'x-client-ip' | 'cf-connecting-ip' | 'fastly-client-ip' | 'x-cluster-client-ip' | 'x-forwarded' | 'forwarded-for' | 'forwarded' | 'appengine-user-ip' | 'true-client-ip' | 'cf-pseudo-ipv4';
+export type IPHeaders =
+  | "x-forwarded-for"
+  | "x-real-ip"
+  | "x-client-ip"
+  | "cf-connecting-ip"
+  | "fastly-client-ip"
+  | "x-cluster-client-ip"
+  | "x-forwarded"
+  | "forwarded-for"
+  | "forwarded"
+  | "appengine-user-ip"
+  | "true-client-ip"
+  | "cf-pseudo-ipv4";
 
 /**
  * Represents a log object that contains information about a request and its response.
@@ -75,7 +95,7 @@ export type LogObject = {
      */
     status_code: number | string | undefined;
     /**
-     * The time it took to process the request and generate the response, in milliseconds.
+     * The time it took to process the request and generate the response, in nanoseconds.
      */
     time: number;
   };
@@ -90,10 +110,11 @@ export type LogObject = {
  */
 export interface RequestLoggerOptions {
   level?: string;
-  format?: LogFormatType, // string | ((log: LogObject) => string | LogObject);
+  format?: LogFormatType; // string | ((log: LogObject) => string | LogObject);
   includeHeaders?: string[];
   skip?: (ctx: Context) => boolean;
   ipHeaders?: IPHeaders[];
+  storageAdapter?: StorageAdapter;
 }
 
 /**
@@ -121,4 +142,12 @@ export interface LogFormatter {
    * @returns Formatted log object or string
    */
   format(log: LogObject): string | LogObject;
+}
+
+/**
+ * Interface for the storage adapter to handle log persistence.
+ */
+export interface StorageAdapter {
+  init(): Promise<void>;
+  saveLog(log: LogObject): Promise<void>;
 }
