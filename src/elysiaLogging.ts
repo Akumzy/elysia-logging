@@ -8,7 +8,7 @@ import type { Elysia } from "elysia";
 import { getIP, getFormattingMethodName } from "./helpers";
 import { Log } from "./log";
 import process from "process";
-import { ConsoleStorageAdapter } from "./adapters/consoleAdapter"; // Import the new adapter
+import { ConsoleStorageAdapter } from "./consoleAdapter"; // Import the new adapter
 
 /**
  * List of IP headers to check in order of priority.

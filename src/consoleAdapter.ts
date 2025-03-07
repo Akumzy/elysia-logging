@@ -1,5 +1,5 @@
-import { StorageAdapter, LogObject } from "../types";
-import { Log } from "../log";
+import { StorageAdapter, LogObject } from "./types";
+import { Log } from "./log";
 import { pino } from "pino";
 
 /**

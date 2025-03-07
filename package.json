@@ -1,14 +1,14 @@
 {
-  "name": "@otherguy/elysia-logging",
+  "name": "@akumzy/elysia-logging",
   "description": "A flexible logging library for Elysia.js",
   "author": {
-    "name": "otherguy",
-    "url": "https://github.com/otherguy",
-    "email": "hi@otherguy.io"
+    "name": "akumzy",
+    "url": "https://github.com/akumzy",
+    "email": "akumaisaacakuma@gmail.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/otherguy/elysia-logging"
+    "url": "git+https://github.com/akumzy/elysia-logging.git"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -23,6 +23,13 @@
     },
     "./types": {
       "types": "./dist/types.d.ts"
+    },
+    "./consoleAdapter": {
+      "require": "./dist/consoleAdapter.js",
+      "import": "./dist/consoleAdapter.js",
+      "node": "./dist/consoleAdapter.js",
+      "default": "./dist/consoleAdapter.js",
+      "types": "./dist/consoleAdapter.d.ts"
     }
   },
   "scripts": {
@@ -71,12 +78,13 @@
     "typescript": "^5.8.2",
     "winston": "^3.17.0"
   },
-  "homepage": "https://github.com/otherguy/elysia-logging",
-  "bugs": "https://github.com/otherguy/elysia-logging/issues",
+  "homepage": "https://github.com/akumzy/elysia-logging",
+  "bugs": "https://github.com/akumzy/elysia-logging/issues",
   "license": "MIT",
   "keywords": [
     "elysia",
     "logging",
     "logger"
-  ]
+  ],
+  "version": "0.0.3"
 }
