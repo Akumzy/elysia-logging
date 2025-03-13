@@ -149,7 +149,7 @@ export const ElysiaLogging = (
         // Capture request headers
         const requestHeaders: Record<string, string> = {};
         for (const [key, value] of ctx.request.headers.entries()) {
-          requestHeaders[key] = ctx.request.headers.get(value)!;
+          requestHeaders[key] = value;
         }
 
         // Redact sensitive headers
