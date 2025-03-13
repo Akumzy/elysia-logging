@@ -91,12 +91,6 @@ export const ElysiaLogging = (
     level = "info",
     format = "json",
     skip = undefined,
-    includeHeaders = [
-      "x-forwarded-for",
-      "authorization",
-      "user-agent",
-      "referer",
-    ], // Added 'referer'
     ipHeaders = headersToCheck,
     redactRequestBodyFields = ["password", "token", "apiKey", "secret"],
     redactResponseBodyFields = ["token", "apiKey", "secret"],
@@ -148,19 +142,16 @@ export const ElysiaLogging = (
           typeof (ctx.store as { requestStart?: bigint }).requestStart ===
             "bigint"
         ) {
-          duration =
-            Number(
-              process.hrtime.bigint() -
-                (ctx.store as { requestStart: bigint }).requestStart
-            ) / 1e6; // Convert to milliseconds
+          duration = Number(
+            process.hrtime.bigint() -
+              (ctx.store as { requestStart: bigint }).requestStart
+          );
         }
 
         // Capture request headers
         const requestHeaders: Record<string, string> = {};
-        for (const header of includeHeaders) {
-          if (ctx.request.headers.has(header)) {
-            requestHeaders[header] = ctx.request.headers.get(header)!;
-          }
+        for (const [key, value] of ctx.request.headers.entries()) {
+          requestHeaders[key] = ctx.request.headers.get(value)!;
         }
 
         // Redact sensitive headers
