@@ -138,9 +138,7 @@ export const ElysiaLogging = (
         // Calculate duration
         let duration: number = 0;
         if (
-          (ctx.store as { requestStart?: bigint }).requestStart !== undefined &&
-          typeof (ctx.store as { requestStart?: bigint }).requestStart ===
-            "bigint"
+          (ctx.store as { requestStart?: bigint }).requestStart !== undefined
         ) {
           duration = Number(
             process.hrtime.bigint() -
